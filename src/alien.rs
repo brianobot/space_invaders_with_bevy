@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::{Resolution, alien};
+use rand;
+use rand::Rng;
+
+use crate::Resolution;
 
 #[derive(Component)]
 pub struct Alien {
@@ -114,17 +117,22 @@ fn spawn_enemy_bullets(
     asset_server: Res<AssetServer>,
     resolution: Res<Resolution>,
 ) {
+    let mut rng = rand::rng();
     let bullet_image = asset_server.load("bullet.png");
 
     for transform in alien_query.iter() {
-        let alien_front_position = transform.translation - (Vec3::Y * 10.);
+        let alien_shoot = rng.random_bool(0.001);
 
-        commands.spawn((
-            AlienBullet,
-            Sprite::from_image(bullet_image.clone()),
-            Transform::from_translation(alien_front_position)
-                .with_scale(Vec3::splat(resolution.pixel_ratio)),
-        ));
+        if alien_shoot {
+            let alien_front_position = transform.translation - (Vec3::Y * 10.);
+
+            commands.spawn((
+                AlienBullet,
+                Sprite::from_image(bullet_image.clone()),
+                Transform::from_translation(alien_front_position)
+                    .with_scale(Vec3::splat(resolution.pixel_ratio)),
+            ));
+        }
     }
 }
 
@@ -139,9 +147,9 @@ fn update_enemy_bullets(
 
 fn remove_dead_aliens(
     mut commands: Commands,
-    dead_alien_query: Query<(Entity, &Alien), With<Dead>>,
+    dead_alien_query: Query<Entity, (With<Alien>, With<Dead>)>,
 ) {
-    for (entity, alien) in dead_alien_query.iter() {
+    for entity in dead_alien_query.iter() {
         commands.entity(entity).despawn();
     }
 }

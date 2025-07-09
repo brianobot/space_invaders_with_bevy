@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::Resolution;
-use crate::{Alien, Dead};
+use crate::{Alien, AlienBullet, Dead};
 
 const BULLET_SPEED: f32 = 1000.;
 
@@ -10,8 +10,9 @@ pub struct Player {
     pub shoot_timer: f32,
 }
 
+
 #[derive(Component)]
-pub struct Bullet;
+pub struct PlayerBullet;
 
 pub struct PlayerPlugin;
 
@@ -19,7 +20,7 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_player);
         app.add_systems(Update, (update_player, debug_player_position));
-        app.add_systems(Update, (update_bullets, update_alien_interations));
+        app.add_systems(Update, (update_bullets, update_alien_interations, update_bullet_interaction));
     }
 }
 
@@ -74,7 +75,7 @@ fn update_player(
         if key.just_pressed(KeyCode::Space) {
             let player_top = transform.translation + Vec3::Y * 1.5;
             commands.spawn((
-                Bullet,
+                PlayerBullet,
                 Sprite::from_image(bullet_image.clone()),
                 Transform::from_translation(player_top)
                     .with_scale(Vec3::splat(resolution.pixel_ratio)),
@@ -95,7 +96,7 @@ fn update_player(
 
 fn update_bullets(
     mut commands: Commands,
-    mut bullet_query: Query<(Entity, &mut Transform), With<Bullet>>,
+    mut bullet_query: Query<(Entity, &mut Transform), With<PlayerBullet>>,
     time: Res<Time>,
     resolution: Res<Resolution>,
 ) {
@@ -110,11 +111,11 @@ fn update_bullets(
 
 fn update_alien_interations(
     mut commands: Commands,
-    bullet_query: Query<(Entity, &Transform), With<Bullet>>,
+    bullet_query: Query<(Entity, &Transform), With<PlayerBullet>>,
     alien_query: Query<(Entity, &Transform), (With<Alien>, Without<Dead>)>,
 ) {
     for (alien_entity, alien_transform) in alien_query.iter() {
-        for (bullet_entity, bullet_transform) in bullet_query {
+        for (_, bullet_transform) in bullet_query {
             let alien_position =
                 Vec2::new(alien_transform.translation.x, alien_transform.translation.y);
             let bullet_position = Vec2::new(
@@ -126,5 +127,25 @@ fn update_alien_interations(
                 commands.entity(alien_entity).despawn();
             }
         }
+    }
+}
+
+
+fn update_bullet_interaction(
+    mut commands: Commands,
+    mut player_query: Query<(Entity, &Transform), With<Player>>,
+    mut alien_bullet_query: Query<(Entity, &Transform), With<AlienBullet>>,
+) {
+    let (entity, transform) = player_query.single_mut().unwrap();
+    let player_position = Vec2::new(transform.translation.x, transform.translation.y);
+
+    for (_, alien_transform) in alien_bullet_query.iter_mut() {
+        let alien_bullet_position = Vec2::new(alien_transform.translation.x, alien_transform.translation.y);
+
+        if Vec2::distance(player_position, alien_bullet_position) < 10. {
+            commands.entity(entity).despawn()
+        }
+
+
     }
 }
