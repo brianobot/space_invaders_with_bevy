@@ -79,12 +79,14 @@ fn setup_aliens(
 }
 
 fn update_aliens(
-    mut alien_query: Query<(&Alien, &mut Transform), Without<Dead>>,
+    mut alien_query: Query<(Entity, &Alien, &mut Transform), Without<Dead>>,
     time: Res<Time>,
     mut alien_manager: ResMut<AlienManager>,
     resolution: Res<Resolution>,
 ) {
-    for (_alien, mut transform) in alien_query.iter_mut() {
+    for (_entity, _alien, mut transform) in alien_query.iter_mut() {
+        debug!("{}", _entity);
+        
         transform.translation.x += time.delta_secs() * alien_manager.direction * SPEED;
 
         if transform.translation.x.abs() > resolution.screen_dimension.x * 0.5 {
