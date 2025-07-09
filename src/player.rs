@@ -166,8 +166,8 @@ fn update_bullet_interaction(
 
 fn update_ammo_interactions(
     mut commands: Commands,
-    mut player_bullet_query: Query<(Entity, &Transform), With<PlayerBullet>>,
-    mut alien_bullet_query: Query<(Entity, &Transform), With<AlienBullet>>,
+    player_bullet_query: Query<(Entity, &Transform), With<PlayerBullet>>,
+    alien_bullet_query: Query<(Entity, &Transform), With<AlienBullet>>,
 ) {
     for (entity_a, transform_a) in player_bullet_query.iter() {
         for (entity_b, transform_b) in alien_bullet_query.iter() {
