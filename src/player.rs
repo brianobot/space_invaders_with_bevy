@@ -1,14 +1,12 @@
 use bevy::prelude::*;
 
 use crate::Resolution;
-use crate::{Alien, AlienBullet, Dead};
+use crate::AlienBullet;
 
-const BULLET_SPEED: f32 = 1000.;
+const BULLET_SPEED: f32 = 100.;
 
 #[derive(Component)]
-pub struct Player {
-    pub shoot_timer: f32,
-}
+pub struct Player;
 
 
 #[derive(Component)]
@@ -22,7 +20,6 @@ impl Plugin for PlayerPlugin {
         app.add_systems(Update, (update_player, debug_player_position));
         app.add_systems(Update, (
             update_bullets, 
-            update_alien_interations, 
             update_bullet_interaction,
             update_ammo_interactions,
         ));
@@ -35,6 +32,7 @@ fn debug_player_position(player_query: Query<(&Player, &Transform)>) {
     }
 }
 
+
 fn setup_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -45,11 +43,12 @@ fn setup_player(
     let position = Vec3::ZERO - Vec3::Y * resolution.screen_dimension.y * 0.45;
 
     commands.spawn((
-        Player { shoot_timer: 1. },
+        Player,
         Sprite::from_image(player_image),
         Transform::from_translation(position).with_scale(Vec3::splat(resolution.pixel_ratio)),
     ));
 }
+
 
 fn update_player(
     mut commands: Commands,
@@ -109,6 +108,7 @@ fn update_player(
     
 }
 
+  
 fn update_bullets(
     mut commands: Commands,
     mut bullet_query: Query<(Entity, &mut Transform), With<PlayerBullet>>,
@@ -120,27 +120,6 @@ fn update_bullets(
 
         if transform.translation.y >= (resolution.screen_dimension.y * 0.5) - 20. {
             commands.entity(entity).despawn();
-        }
-    }
-}
-
-fn update_alien_interations(
-    mut commands: Commands,
-    bullet_query: Query<(Entity, &Transform), With<PlayerBullet>>,
-    alien_query: Query<(Entity, &Transform), (With<Alien>, Without<Dead>)>,
-) {
-    for (alien_entity, alien_transform) in alien_query.iter() {
-        for (_, bullet_transform) in bullet_query {
-            let alien_position =
-                Vec2::new(alien_transform.translation.x, alien_transform.translation.y);
-            let bullet_position = Vec2::new(
-                bullet_transform.translation.x,
-                bullet_transform.translation.y,
-            );
-
-            if Vec2::distance(alien_position, bullet_position) < 10. {
-                commands.entity(alien_entity).despawn();
-            }
         }
     }
 }

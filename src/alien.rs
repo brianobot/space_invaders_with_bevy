@@ -3,18 +3,18 @@ use bevy::prelude::*;
 use rand;
 use rand::Rng;
 
-use crate::Resolution;
+use crate::{Resolution, PlayerBullet};
 
 #[derive(Component)]
-pub struct Alien {
-    pub is_dead: bool,
-}
+pub struct Alien;
 
 #[derive(Component)]
 pub struct Dead;
 
 #[derive(Component)]
-pub struct AlienBullet;
+pub struct AlienBullet {
+    pub velocity: f32, 
+}
 
 #[derive(Resource, Default)]
 pub struct AlienManager {
@@ -34,6 +34,7 @@ impl Plugin for AlienPlugin {
             (
                 spawn_enemy_bullets,
                 update_enemy_bullets,
+                update_alien_interations,
                 remove_dead_aliens,
             ),
         );
@@ -66,7 +67,7 @@ fn setup_aliens(
                 + (Vec3::Y * resolution.screen_dimension.y * 0.5);
 
             commands.spawn((
-                Alien { is_dead: false },
+                Alien,
                 Sprite {
                     image: alien_image.clone(),
                     ..Default::default()
@@ -86,7 +87,7 @@ fn update_aliens(
 ) {
     for (_entity, _alien, mut transform) in alien_query.iter_mut() {
         debug!("{}", _entity);
-        
+
         transform.translation.x += time.delta_secs() * alien_manager.direction * SPEED;
 
         if transform.translation.x.abs() > resolution.screen_dimension.x * 0.5 {
@@ -121,15 +122,23 @@ fn spawn_enemy_bullets(
 ) {
     let mut rng = rand::rng();
     let bullet_image = asset_server.load("bullet.png");
+    
 
     for transform in alien_query.iter() {
-        let alien_shoot = rng.random_bool(0.001);
+        let mut bullet_velocity = 1.;
+
+        let alien_shoot = rng.random_bool(0.0001);
+        let boosted_shot = rng.random_bool(0.001);
 
         if alien_shoot {
             let alien_front_position = transform.translation - (Vec3::Y * 10.);
+            
+            if boosted_shot {
+                bullet_velocity += 1000.;
+            } 
 
             commands.spawn((
-                AlienBullet,
+                AlienBullet { velocity: bullet_velocity },
                 Sprite::from_image(bullet_image.clone()),
                 Transform::from_translation(alien_front_position)
                     .with_scale(Vec3::splat(resolution.pixel_ratio)),
@@ -139,11 +148,34 @@ fn spawn_enemy_bullets(
 }
 
 fn update_enemy_bullets(
-    mut alien_query: Query<&mut Transform, With<AlienBullet>>,
+    mut alien_query: Query<(&AlienBullet, &mut Transform)>,
     time: Res<Time>,
 ) {
-    for mut transform in alien_query.iter_mut() {
-        transform.translation.y -= time.delta_secs() * 100.;
+    for (alien_bullet, mut transform) in alien_query.iter_mut() {
+        transform.translation.y -= time.delta_secs() * 100. * alien_bullet.velocity;
+    }
+}
+
+
+fn update_alien_interations(
+    mut commands: Commands,
+    bullet_query: Query<(Entity, &Transform), With<PlayerBullet>>,
+    alien_query: Query<(Entity, &Transform), (With<Alien>, Without<Dead>)>,
+) {
+    for (alien_entity, alien_transform) in alien_query.iter() {
+        for (bullet_entity, bullet_transform) in bullet_query {
+            let alien_position =
+                Vec2::new(alien_transform.translation.x, alien_transform.translation.y);
+            let bullet_position = Vec2::new(
+                bullet_transform.translation.x,
+                bullet_transform.translation.y,
+            );
+
+            if Vec2::distance(alien_position, bullet_position) < 10. {
+                commands.entity(alien_entity).insert(Dead);
+                commands.entity(bullet_entity).despawn();
+            }
+        }
     }
 }
 
